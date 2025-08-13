@@ -24,12 +24,14 @@ library(interactions)
 library(expss)
 library(tidyr)
 library(table1)
-
-setwd("Z:/Tyler/Research/aa_Research Projects and Publications/ACTIVE/Data")
+library(officer)
+library(rvg)
+setwd("C:/Users/trbell/OneDrive - University of California, San Diego Health/Tyler Bell - Team - Tyler/Research/aa_Research Projects and Publications/ACTIVE/Data")
 
 ACTIVE <- read_sav("ACTIVE_DATA_Long_23September2022.sav",encoding="Latin2")
 names(ACTIVE)
 names(ACTIVE)<- toupper(names(ACTIVE))
+
 # Computing chronic pain status 
 
 ACTIVE$BP_1 <- ifelse(ACTIVE$SF3621_1 >= 0 & ACTIVE$SF3621_1 <= 3, 0, 
@@ -46,7 +48,13 @@ ACTIVE$CP <- factor(ACTIVE$CP, levels = c(0, 1), labels = c("CP-", "CP+"))
 # Using complete.cases
 ACTIVE_no_missing <- ACTIVE[complete.cases(ACTIVE[, c("CP", "MFQFF")]), ]
 
+median(ACTIVE_no_missing$MFQ_FF_BR)
+describe(ACTIVE_no_missing$MFQ_FF_BR)
 
+
+
+
+table1(~ MFQ_FF_BR | CP, data = ACTIVE_no_missing)
 
 ####
 
@@ -116,7 +124,7 @@ TURN360.mlm <-lmer(scale(TURN360) ~ scale(AGEB) + as_factor(MARSTAT_CAT) + as_fa
 summary(TURN360.mlm)
 TURN360.mlm.tab<-tab_model(TURN360.mlm, p.val = "kr", show.stat=TRUE,show.se = TRUE)
 
-
+median(ACTIVE$MFQ_FF_B)
 
 #DYN_AVG
 ACTIVE$DYN_AVG
@@ -160,13 +168,17 @@ ACTIVE$GROUP <- factor(ACTIVE$GROUP,
 
 
 table(ACTIVE$AGE_LONG)      
-
+ACTIVE$MEM_COMP <- ACTIVE$MEMCOMP
 median_MFQ_FF_B <- median(ACTIVE$MFQ_FF_BR, na.rm = TRUE)
 ACTIVE$MFQ_FF_B_median_split_r <- ifelse(ACTIVE$MFQ_FF_BR >= median_MFQ_FF_B, "High", "Low")
 
 #Memory Figure
 ## Subset the data to include only rows with complete cases for REASCOMP and GROUP
-ACTIVE_MEM_sub <- subset(ACTIVE, complete.cases(MEM_COMP, GROUP))
+ACTIVE_MEM_sub <- subset(ACTIVE, complete.cases(ACTIVE[, c("MEM_COMP", "AGEB", 
+                                                           "MARSTAT_CAT", "RACE_CAT", 
+                                                           "EDUCLEVL", "CESDTOT", 
+                                                           "INTGRPR", "AGE_LONG_TIMESINCE", 
+                                                           "ID")]))
 
 ## Fit the linear mixed-effects model
 MEM_COMP.fig.mlm <- lmer(MEM_COMP ~ AGEB + MARSTAT_CAT + RACE_CAT + EDUCLEVL + CESDTOT + 
@@ -180,7 +192,6 @@ summary(MEM_COMP.fig.mlm)
 ACTIVE_MEM_sub$MEM_COMP_RES <- residuals(MEM_COMP.fig.mlm)
 
 
-
 figure.MEM_COMP.mlm <- ggplot(ACTIVE_MEM_sub, aes(x =AGE_LONG_TIMESINCE, y = MEM_COMP_RES, color = as.factor(GROUP), linetype = as.factor(GROUP))) +
   geom_smooth(aes(color = as.factor(GROUP), linetype = as.factor(GROUP)), method = "lm", se = TRUE, fullrange = TRUE, size = 1.5) +
   labs(x = "Time Since Baseline", y = "Memory", color = "Group", linetype = "Group") +  # Corrected 'linetype' argument
@@ -190,12 +201,16 @@ figure.MEM_COMP.mlm
 
 #Reasoning Figure
 ## Subset the data to include only rows with complete cases for REASCOMP and GROUP
-ACTIVE_reas_sub <- subset(ACTIVE, complete.cases(REASCOMP, GROUP))
+ACTIVE_reas_sub <- subset(ACTIVE, complete.cases(ACTIVE[, c("REASCOMP", "AGEB", 
+                                                            "MARSTAT_CAT", "RACE_CAT", 
+                                                            "EDUCLEVL", "CESDTOT", 
+                                                            "INTGRPR", "AGE_LONG_TIMESINCE", 
+                                                            "ID")]))
 
 ## Fit the linear mixed-effects model
-reasoncomp.fig.mlm <- lmer(REASCOMP ~ AGEB + MARSTAT_CAT + RACE_CAT + EDUCLEVL + CESDTOT + 
+reasoncomp.fig.mlm <- lmer(scale(REASCOMP ~ AGEB + MARSTAT_CAT + RACE_CAT + EDUCLEVL + CESDTOT + 
                              INTGRPR + INTGRPR * AGE_LONG_TIMESINCE + (1 | ID), 
-                           data = ACTIVE_reas_sub, REML = FALSE)
+                           data = ACTIVE_reas_sub, REML = FALSE))
 
 ## Display the model summary
 summary(reasoncomp.fig.mlm)
@@ -343,8 +358,11 @@ figure.ACTIVE_TURN360_CP.mlm
 
 #DYN_AVG_M
 # Subset the data ensuring complete cases for the specified variables
-ACTIVE_DYN_AVG_M_sub <- subset(ACTIVE, complete.cases(DYN_AVG_M, GROUP, AGE_LONG_TIMESINCE,
-                                                      CESDTOT, AGEB, MARSTAT_CAT, RACE_CAT, EDUCLEVL, INTGRPR))
+ACTIVE_DYN_AVG_M_sub <- subset(ACTIVE, complete.cases(ACTIVE[, c("DYN_AVG_M", "AGEB", 
+                                                                 "MARSTAT_CAT", "RACE_CAT", 
+                                                                 "EDUCLEVL", "CESDTOT", 
+                                                                 "INTGRPR", "AGE_LONG_TIMESINCE", 
+                                                                 "ID")]))
 
 # Fit the linear mixed-effects model
 DYN_AVG_M.fig.mlm <- lmer(DYN_AVG_M ~ AGEB + MARSTAT_CAT + RACE_CAT + EDUCLEVL + CESDTOT + 
@@ -358,22 +376,40 @@ summary(DYN_AVG_M.fig.mlm)
 ACTIVE_DYN_AVG_M_sub$DYN_AVG_M_RES <- residuals(DYN_AVG_M.fig.mlm)
 
 # Create the figure using ggplot2
+# Create the plot
 figure.ACTIVE_DYN_AVG_M.mlm <- ggplot(ACTIVE_DYN_AVG_M_sub, 
-                                      aes(x = AGE_LONG_TIMESINCE, y = scale(DYN_AVG_M), 
-                                          color = as.factor(MFQ_FF_B_median_split_r), linetype = as.factor(MFQ_FF_B_median_split_r))) +
-  geom_smooth(aes(color = as.factor(MFQ_FF_B_median_split_r), linetype = as.factor(MFQ_FF_B_median_split_r)), 
+                                      aes(x = AGE_LONG_TIMESINCE, 
+                                          y = scale(DYN_AVG_M), 
+                                          color = as.factor(MFQ_FF_B_median_split_r), 
+                                          linetype = as.factor(MFQ_FF_B_median_split_r))) +
+  geom_smooth(aes(color = as.factor(MFQ_FF_B_median_split_r), 
+                  linetype = as.factor(MFQ_FF_B_median_split_r)), 
               method = "lm", se = TRUE, fullrange = TRUE, size = 1.5) +
   labs(x = "Time Since Baseline", y = "Grip Strength (z-score)", color = "", linetype = "") +
-  theme_minimal() + ylim(-.5,.5) +
-  theme(legend.position = "bottom",
-        text = element_text(family = "serif", size = 12),         
-        axis.title = element_text(family = "serif", size = 14, face = "bold"),  
-        axis.text = element_text(family = "serif", size = 14)) + theme(legend.position = "none") 
+  scale_x_continuous(breaks = c(0, 2.5, 5, 7.5, 10, 12.5), limits = c(0, 12.5)) +
+  scale_y_continuous(limits = c(-0.5, 0.5)) +
+  theme_minimal() +
+  theme(legend.position = "none",
+        text = element_text(family = "serif", size = 12),
+        axis.title = element_text(family = "serif", size = 14, face = "bold"),
+        axis.text = element_text(family = "serif", size = 14))
 
 # Display the figure
-figure.ACTIVE_DYN_AVG_M.mlm
+print(figure.ACTIVE_DYN_AVG_M.mlm)
 
+ppt <- read_pptx()
 
+# Add a blank slide
+ppt <- add_slide(ppt, layout = "Title and Content", master = "Office Theme")
+
+# Convert ggplot to editable vector graphic
+plot_dml <- dml(ggobj = figure.ACTIVE_DYN_AVG_M.mlm)
+
+# Add plot to slide
+ppt <- ph_with(ppt, value = plot_dml, location = ph_location_fullsize())
+
+# Save the PowerPoint
+print(ppt, target = "grip_figure_updated.pptx")
 
 
 #SF36SF_L
@@ -438,6 +474,19 @@ figure.ACTIVE_DYN_AVG_M.mlm2 <- ggplot(ACTIVE_DYN_AVG_M_sub,
 
 # Display the figure
 figure.ACTIVE_DYN_AVG_M.mlm2
+ppt <- read_pptx()
+
+# Add a blank slide
+ppt <- add_slide(ppt, layout = "Title and Content", master = "Office Theme")
+
+# Convert ggplot to editable vector graphic
+plot_dml <- dml(ggobj = sMRI_EC_plot)
+
+# Add plot to slide
+ppt <- ph_with(ppt, value = plot_dml, location = ph_location_fullsize())
+
+# Save the PowerPoint
+print(ppt, target = "grip_figure_updated.pptx")
 
 
 legend_grob <- get_legend(figure.ACTIVE_DYN_AVG_M.mlm2)
@@ -472,5 +521,15 @@ figure.ACTIVE_TURN360_CP.mlm2 <- ggplot(ACTIVE_TURN360_sub,
 figure.ACTIVE_TURN360_CP.mlm2
 legend_grob3 <- get_legend(figure.ACTIVE_TURN360_CP.mlm2)
 plot(legend_grob3)
+
+ACTIVE$INTGRPR
+ACTIVE$INTGRP <- relevel(ACTIVE$INTGRP, ref = "4")
+
+model <- lmer(scale(TURN360) ~ scale(AGE_LONG_TIMESINCE) + factor(INTGRP) + (1 | ID), 
+                         data = ACTIVE, REML = FALSE)
+
+## Display the model summary
+summary(model)
+
 
 
